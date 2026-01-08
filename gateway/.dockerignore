@@ -1,0 +1,44 @@
+# Exclude sensitive files
+secrets/
+*.pem
+*.key
+service_account_key.json
+
+# Exclude logs and runtime data
+logs/
+*.log
+gateway.log
+validation_artifacts/
+
+# Exclude Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Exclude build artifacts
+*.egg-info/
+dist/
+build/
+*.so
+
+# Exclude venv and node_modules
+venv/
+env/
+node_modules/
+
+# Exclude git
+.git/
+.gitignore
+
+# Exclude Docker and deployment files
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Exclude test and temp files
+*.swp
+*.swo
+*~
+.DS_Store

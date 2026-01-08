@@ -1,0 +1,123 @@
+# Core Bittensor dependencies
+bittensor>=9.10,<10.0.0
+
+# HTTP and networking
+requests>=2.31.0
+aiohttp>=3.9.5
+aiodns>=3.1.1
+pysocks>=1.7.1  # SOCKS5 proxy support for DNS queries
+
+# Data processing and ML
+numpy>=1.24.0
+pandas>=2.0.0
+# torch[cpu]>=2.0.0  # DEPRECATED: Only needed for unused collusion detection
+# torch_geometric>=2.4.0  # DEPRECATED: Only needed for unused collusion detection
+# pygod>=1.1.0  # DEPRECATED: Only needed for unused collusion detection
+
+# DNS
+dnspython>=2.6.1
+
+# Caching and storage
+redis>=5.0.0
+pickle-mixin>=1.0.2
+boto3>=1.40.0
+arweave-python-client>=1.0.19
+
+# Monitoring and metrics
+prometheus_client>=0.19.0
+structlog>=23.2.0
+
+# Retry and resilience
+tenacity>=8.2.0
+
+# Environment and configuration
+python-dotenv>=1.0.0
+pyyaml>=6.0.1
+
+# Web framework
+starlette>=0.30.0
+pydantic>=2.0.0
+fastapi>=0.110.0
+uvicorn[standard]>=0.38.0
+python-multipart>=0.0.6
+
+# Utilities
+rich>=13.0.0
+argparse>=1.4.0
+click>=8.1.0
+
+# Testing
+pytest>=8.0.0
+pytest-cov>=4.1.0
+pytest-mock>=3.10.0
+pytest-asyncio>=0.21.0
+
+# Setuptools
+setuptools>=68.0.0
+
+# Google Cloud
+google-cloud-firestore==2.11.1
+google-auth==2.17.3
+firebase-admin>=6.2.0
+
+# Miner-specific
+bt>=0.1.9
+bittensor-cli>=1.0.0
+
+# Code quality and linting
+flake8>=6.0.0
+black>=23.7.0
+isort>=5.12.0
+
+# Code coverage
+coverage>=7.3.0
+
+# Additional utilities
+typing-extensions>=4.7.0
+python-Levenshtein>=0.23.0
+
+
+# Enhanced validation dependencies
+python-whois>=0.7.3
+fuzzywuzzy>=0.18.0
+
+# Core dependencies
+httpx>=0.27.0
+openrouter>=0.0.16
+firecrawl>=2.16.0
+openai>=1.0.0
+
+phonenumbers>=8.13.0
+portalocker>=2.7.0
+publicsuffix2>=2.20191221
+
+# Schema validation and configuration
+jsonschema>=4.17.0
+PyYAML>=6.0
+
+# throwaway email blocklist
+disposable-email-domains>=0.0.138
+
+# JWT Token Management
+pyjwt>=2.8.0
+
+# TEE Attestation Verification (for miners/validators)
+cbor2>=5.4.6
+cryptography>=41.0.7
+
+# Supabase (for future migration)
+supabase>=2.0.0
+
+# Lead Sorcerer additional dependencies (if not already listed above)
+# Note: Most Lead Sorcerer dependencies are already included above
+# These are additional ones that might be needed:
+nest-asyncio>=1.6.0
+websockets>=15.0.1
+
+# gRPC communication (for miner/validator nodes)
+grpcio>=1.60.0
+# ddgs>=6.0.0  # REMOVED - using ScrapingDog API instead
+
+# Geographic normalization (city/state/country standardization)
+us>=3.0.0  # US state lookup (offline, no rate limits)
+geonamescache>=2.0.0  # 786k+ city name variations (offline, no rate limits)

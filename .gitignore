@@ -1,0 +1,128 @@
+# Project-specific
+bittensor
+.replit
+replit.md
+.cursor/
+tests/
+path/
+validation_artifacts/
+data/
+# Includes gateway/logs/arweave_fallback/ (local event logging when Arweave fails)
+logs/
+validator_weights/
+# Validator state files (should remain local)
+validator_state/
+.env
+.test_supabase_connection.py
+tasks.md
+tasks copy.md
+business_files/
+report.json
+# Reputation scoring (keep local, do not commit)
+Rep_Score/
+
+# Patrol reference code (from tao.com - separate repo)
+patrol/
+
+# Regulatory attestation files (contain wallet addresses)
+data/regulatory/miner_attestation.json
+# macOS
+.DS_Storez
+
+# Bittensor-specific
+*.log
+# Validator state files (e.g., validator_state.npz)
+*.npz
+*.key   # Stray key files
+pending_reveals.json  # Validator reveal cache (runtime file)
+
+# Leadpoet-specific
+wallet.hotkey/
+lead_pool.json
+leadpoet_subnet.egg-info/
+
+# Testing and Development
+*.pytest_cache/
+coverage/
+.coverage
+*.tox/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+*.egg
+.pythonlibs/
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+*.mo
+*.pot
+pip-log.txt
+pip-delete-this-directory.txt
+
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+.history/
+
+service_account_key.json
+
+.DS_Store
+start_server.sh
+
+# Supabase Edge Functions - KEEP PRIVATE
+# These contain authentication logic that should not be public
+supabase/
+
+# API code - KEEP PRIVATE (only for internal team use)
+Leadpoet/api/
+
+# Auto-generated validator wrapper
+.auto_update_wrapper.sh
+
+# Legacy miner code - no longer used (replaced by lead_sorcerer_main)
+miner_models/get_leads.py
+
+# Burn validator script 
+neurons/burn.py
+
+# Test files (contain credentials - DO NOT COMMIT)
+test_*.py
+test_*.sh
+
+# Temporary test output files
+test-*.json
+*-test.json
+
+# Gateway secrets (Arweave keyfile, Ed25519 keypair, etc.)
+gateway/secrets/
+*.pem
+*.jwk
+*_keyfile.json
+
+
+# Gateway deployment files (contain infrastructure details)
+docker-compose.gateway.yml
+docker-compose.minio.yml
+.env
+
+# Company name cache (runtime file)
+validator_models/company_name_cache.json
