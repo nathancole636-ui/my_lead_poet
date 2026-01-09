@@ -7,7 +7,8 @@ import bittensor as bt
 import socket
 from Leadpoet.base.miner import BaseMinerNeuron
 from Leadpoet.protocol import LeadRequest
-from miner_models.lead_sorcerer_main.main_leads import get_leads
+# Tri-key pipeline: ScrapingDog (discover) + Firecrawl (crawl) + OpenRouter (enrich)
+from miner_models.tri_key_pipeline.main import get_leads as tri_get_leads
 from typing import Tuple, List, Dict, Optional
 from aiohttp import web
 import os
@@ -72,6 +73,29 @@ class Miner(BaseMinerNeuron):
         self._miner_hotkey: Optional[str] = None
         
         bt.logging.info(f"✅ Miner initialized (using trustless gateway - no JWT tokens)")
+
+        # ------------------------------------------------------------------
+        # Local, high-detail logs (JSONL) for debugging.
+        # NOTE: This does not change validator logic or gateway behavior.
+        # ------------------------------------------------------------------
+        self._log_dir = Path("data") / "logs"
+        self._log_dir.mkdir(parents=True, exist_ok=True)
+        self._req_log_path = self._log_dir / "validator_requests.jsonl"
+        self._pipe_log_path = self._log_dir / "pipeline_events.jsonl"
+
+        # URL dedupe DB for discovery (ScrapingDog stage)
+        self._dedupe_db_path = Path("data") / "url_dedup.sqlite"
+
+    def _jsonl_append(self, path: Path, payload: dict):
+        """Append a single JSON object to a .jsonl file (best-effort)."""
+        try:
+            payload = dict(payload)
+            payload.setdefault("ts", datetime.now(timezone.utc).isoformat())
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+        except Exception as e:
+            # Never crash miner due to logging
+            print(f"⚠️ log write failed: {e}")
 
     def pause_sourcing(self):
         print("⏸️ Pausing sourcing (cancel background task)…")
@@ -183,7 +207,16 @@ class Miner(BaseMinerNeuron):
                     if not self.sourcing_mode:
                         continue
                     print("\n🔄 Sourcing new leads...")
-                new_leads = await get_leads(1, industry=None, region=None)
+                new_leads = await tri_get_leads(
+                    1,
+                    industry=None,
+                    region=None,
+                    dedupe_db_path=str(self._dedupe_db_path),
+                    log_cb=lambda ev: self._jsonl_append(self._pipe_log_path, {
+                        "mode": "background_sourcing",
+                        **ev,
+                    }),
+                )
                 
                 # Process leads through source provenance validation (protocol level)
                 validated_leads = await self.process_generated_leads(new_leads)
@@ -328,7 +361,16 @@ class Miner(BaseMinerNeuron):
                         print(
                             "📝 No leads found in pool, generating new leads..."
                         )
-                        new_leads = await get_leads(n * 2, target_ind, None)
+                        new_leads = await tri_get_leads(
+                            n * 2,
+                            industry=target_ind,
+                            region=None,
+                            dedupe_db_path=str(self._dedupe_db_path),
+                            log_cb=lambda ev: self._jsonl_append(self._pipe_log_path, {
+                                "mode": "cloud_curation",
+                                **ev,
+                            }),
+                        )
                         
                         # Process leads through source provenance validation (protocol level)
                         validated_leads = await self.process_generated_leads(new_leads)
@@ -508,8 +550,16 @@ class Miner(BaseMinerNeuron):
                         print(
                             "📝 No leads found in pool, generating new leads..."
                         )
-                        new_leads = await get_leads(num_leads * 2, target_ind,
-                                                    None)
+                        new_leads = await tri_get_leads(
+                            num_leads * 2,
+                            industry=target_ind,
+                            region=None,
+                            dedupe_db_path=str(self._dedupe_db_path),
+                            log_cb=lambda ev: self._jsonl_append(self._pipe_log_path, {
+                                "mode": "broadcast_request",
+                                **ev,
+                            }),
+                        )
                         
                         # Process leads through source provenance validation (protocol level)
                         validated_leads = await self.process_generated_leads(new_leads)
@@ -658,8 +708,16 @@ class Miner(BaseMinerNeuron):
                         )
                         bt.logging.info(
                             "No leads found in pool, generating new leads")
-                        new_leads = await get_leads(synapse.num_leads * 2,
-                                                    target_ind, synapse.region)
+                        new_leads = await tri_get_leads(
+                            synapse.num_leads * 2,
+                            industry=target_ind,
+                            region=synapse.region,
+                            dedupe_db_path=str(self._dedupe_db_path),
+                            log_cb=lambda ev: self._jsonl_append(self._pipe_log_path, {
+                                "mode": "axon_fallback_generate",
+                                **ev,
+                            }),
+                        )
                         
                         # Process leads through source provenance validation (protocol level)
                         validated_leads = await self.process_generated_leads(new_leads)
@@ -796,7 +854,16 @@ class Miner(BaseMinerNeuron):
             if not curated_leads:
                 print("📝 No leads found in pool, generating new leads...")
                 bt.logging.info("No leads found in pool, generating new leads")
-                new_leads = await get_leads(num_leads * 2, target_ind, region)
+                new_leads = await tri_get_leads(
+                    num_leads * 2,
+                    industry=target_ind,
+                    region=region,
+                    dedupe_db_path=str(self._dedupe_db_path),
+                    log_cb=lambda ev: self._jsonl_append(self._pipe_log_path, {
+                        "mode": "http_fallback_generate",
+                        **ev,
+                    }),
+                )
                 
                 # Process leads through source provenance validation (protocol level)
                 validated_leads = await self.process_generated_leads(new_leads)
@@ -961,10 +1028,20 @@ class Miner(BaseMinerNeuron):
     # -------------------------------------------------------------------
     def forward(self, synapse: LeadRequest) -> LeadRequest:
         # this fires only when the request arrives via AXON
+        caller = getattr(synapse.dendrite, 'hotkey', 'unknown')
         print(
-            f"🔔 AXON QUERY from {getattr(synapse.dendrite, 'hotkey', 'unknown')} | "
+            f"🔔 AXON QUERY from {caller} | "
             f"{synapse.num_leads} leads | desc='{(synapse.business_desc or '')[:40]}…'"
         )
+        # Persist request log (so you can prove whether validators are hitting you)
+        self._jsonl_append(self._req_log_path, {
+            "event": "axon_request",
+            "caller_hotkey": caller,
+            "num_leads": getattr(synapse, "num_leads", None),
+            "industry": getattr(synapse, "industry", None),
+            "region": getattr(synapse, "region", None),
+            "business_desc": (getattr(synapse, "business_desc", "") or "")[:200],
+        })
         # stop sourcing immediately
         self.pause_sourcing()
         result_holder = {}
@@ -995,6 +1072,14 @@ class Miner(BaseMinerNeuron):
             self.resume_sourcing()
             return synapse
         res = result_holder["res"]
+        # Persist response summary
+        self._jsonl_append(self._req_log_path, {
+            "event": "axon_response",
+            "caller_hotkey": caller,
+            "status_code": getattr(getattr(res, "dendrite", None), "status_code", None),
+            "status_message": getattr(getattr(res, "dendrite", None), "status_message", None),
+            "num_leads_returned": len(getattr(res, "leads", []) or []),
+        })
         self.resume_sourcing()
         return res
 
@@ -1012,25 +1097,19 @@ class Miner(BaseMinerNeuron):
             pass
 
     def run(self):
+        """Run miner axon (gRPC) + metagraph sync loop.
+
+        IMPORTANT:
+        - Validators can only send AXON requests if your axon is actually serving.
+        - The previous version of this file accidentally overrode BaseMinerNeuron.run()
+          and never called axon.serve()/axon.start(), which results in:
+            * validator_requests = 0
+            * responses_sent = 0
+
+        This implementation delegates to BaseMinerNeuron.run() so your miner is
+        reachable and can log validator requests.
         """
-        Start the miner and run until interrupted.
-        
-        The miner uses wallet signature-based authentication via the trustless gateway.
-        No JWT tokens or server-issued credentials are used (BRD Section 3.5).
-        """
-        bt.logging.info("Starting miner...")
-        
-        try:
-            while True:
-                # Sync metagraph and check miner status
-                time.sleep(12)
-                
-        except KeyboardInterrupt:
-            bt.logging.success("Miner killed by keyboard interrupt.")
-            exit()
-        except Exception as e:
-            bt.logging.error(f"Miner error: {e}")
-            bt.logging.error(traceback.format_exc())
+        return super().run()
 
 
 DATA_DIR = "data"
